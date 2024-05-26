@@ -10,7 +10,8 @@ import "bootstrap/dist/js/bootstrap.bundle.js";
 import post from "../assets/post.jpg";
 import axios from "axios";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { MdContentPasteSearch } from "react-icons/md";
+
+import { FaSearch } from "react-icons/fa";
 import { FaRegUser } from "react-icons/fa";
 import { useDispatch, useSelector } from "react-redux";
 import { getUser } from "../Auth/Action.js";
@@ -25,7 +26,6 @@ const BlogList = () => {
   const dispatch = useDispatch();
   const jwt = localStorage.getItem("jwt");
   const { auth } = useSelector((store) => store);
-  
 
   useEffect(() => {
     if (jwt) {
@@ -36,12 +36,9 @@ const BlogList = () => {
     LoadCategories();
   }, [jwt, auth.jwt]);
 
-
-useEffect(()=>{
-  LoadPostsByCategory();
-} , [])
-
-
+  useEffect(() => {
+    LoadPostsByCategory();
+  }, []);
 
   const LoadBlogs = async () => {
     try {
@@ -94,7 +91,6 @@ useEffect(()=>{
       console.log("Category Id is:- " + categoryId);
       console.log("Count:- ", (await response).data);
       counts.push(response.data);
-      
     }
     setCount(counts);
   };
@@ -155,9 +151,9 @@ useEffect(()=>{
     }
   };
 
-  const handleUser = (userId) =>{
-    navigate(`/userprofile/${userId}`)
-  }
+  const handleUser = (userId) => {
+    navigate(`/userprofile/${userId}`);
+  };
 
   return (
     <section className="section">
@@ -189,7 +185,9 @@ useEffect(()=>{
                   <ul className="list-inline post-meta mb-2">
                     <li className="list-inline-item">
                       <FaRegUser size={14} />
-                      <a onClick={()=>handleUser(content.user.id)}>{content.user.name}</a>
+                      <a onClick={() => handleUser(content.user.id)}>
+                        {content.user.name}
+                      </a>
                     </li>
                     <li className="list-inline-item">
                       Date : {printDate(content.date)}
@@ -231,7 +229,7 @@ useEffect(()=>{
                   onChange={(e) => setSearch(e.target.value)}
                 />
                 <button type="submit" onClick={(e) => handleSearch(e)}>
-                  <MdContentPasteSearch size={19} />
+                  <FaSearch size={17} />
                 </button>
               </form>
             </div>
@@ -240,8 +238,8 @@ useEffect(()=>{
               <h5 className="widget-title">
                 <span>Categories</span>
               </h5>
-              
-                  {categories.map((category) => (
+
+              {categories.map((category) => (
                 <ul className="list-unstyled widget-list" key={category.id}>
                   <li>
                     <a
@@ -250,12 +248,16 @@ useEffect(()=>{
                     >
                       {category.categoryName}
                       {count.map((cou, index) => {
-    if (categories[index].id === category.id) {
-        // Render the count only for the current category
-        return <small className="ml-auto" key={index}>{cou}</small>;
-    }
-    return null;
-})}
+                        if (categories[index].id === category.id) {
+                          // Render the count only for the current category
+                          return (
+                            <small className="ml-auto" key={index}>
+                              {cou}
+                            </small>
+                          );
+                        }
+                        return null;
+                      })}
                     </a>
                   </li>
                 </ul>

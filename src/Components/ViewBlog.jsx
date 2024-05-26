@@ -1,6 +1,6 @@
 import axios from "axios";
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import "./Application.css";
 import { useDispatch, useSelector } from "react-redux";
@@ -17,7 +17,7 @@ const ViewBlog = () => {
   const [likes, setLikes] = useState([]);
   const [like, setLike] = useState(0);
   const [liked, setLiked] = useState(false);
-
+  const navigate = useNavigate();
   const dispatch = useDispatch();
   const jwt = localStorage.getItem("jwt");
   const { auth } = useSelector((store) => store);
@@ -31,13 +31,13 @@ const ViewBlog = () => {
     fetchComments(id);
   }, [id]);
 
- useEffect(() => {
-  if (auth.user) {
-    const likedPosts = JSON.parse(localStorage.getItem("likedPosts")) || [];
-    const liked = likedPosts.includes(id , auth.user.id);
-    setLiked(liked);
-  }
-}, [id, auth.user]);
+  useEffect(() => {
+    if (auth.user) {
+      const likedPosts = JSON.parse(localStorage.getItem("likedPosts")) || [];
+      const liked = likedPosts.includes(`${id}-${auth.user.id}`);
+      setLiked(liked);
+    }
+  }, [id, auth.user]);
 
   useEffect(() => {
     if (jwt) {
@@ -92,37 +92,66 @@ const ViewBlog = () => {
       });
   };
 
+  const handleDisLike = (likeId, postId, userId) => {
+    if (auth.user) {
+      if (liked) {
+        axios
+          .delete(`http://localhost:9292/delete/like/${likeId}`)
+          .then((res) => {
+            console.log(res.data);
+            fetchLikes();
+            setLiked(false);
+            toast.success("Like removed !!");
+            const likedPosts =
+              JSON.parse(localStorage.getItem("likedPosts")) || [];
+            localStorage.removeItem(
+              "likedPosts",
+              JSON.stringify([...likedPosts, `${postId}-${userId}`])
+            );
+            localStorage.setItem(
+              "likedPosts",
+              JSON.stringify(
+                likedPosts.filter((item) => item !== `${postId}-${userId}`)
+              )
+            );
+          })
+          .catch((err) => {
+            console.log(err);
+            toast.error("Failed to remove Like❌");
+          });
+      } else {
+        toast.info("You have not liked this post yet");
+      }
+    } else {
+      toast.error("First Login Yourself !!");
+    }
+  };
+
   const handleLike = () => {
     if (auth.user) {
       if (!liked) {
-        // Check if the user has already liked the post
         const alreadyLiked = likes.some(
           (like) => like.user.id === auth.user.id
         );
 
         if (!alreadyLiked) {
-          const userLike = { like };
           axios
-            .post(
-              `http://localhost:9292/addlike/${auth.user.id}/${id}`,
-              userLike,
-              {
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              }
-            )
+            .post(`http://localhost:9292/addlike/${auth.user.id}/${id}`, null, {
+              headers: {
+                "Content-Type": "application/json",
+              },
+            })
             .then((res) => {
               console.log(res.data);
-              setLike(like + 1, res.data);
               fetchLikes();
-              setLiked(!liked);
+              setLiked(true);
+              setLike(likes.length + 1); // Update like count
               toast.success("Like Added👍");
               const likedPosts =
                 JSON.parse(localStorage.getItem("likedPosts")) || [];
               localStorage.setItem(
                 "likedPosts",
-                JSON.stringify([...likedPosts, id, auth.user.id])
+                JSON.stringify([...likedPosts, `${id}-${auth.user.id}`])
               );
             })
             .catch((err) => {
@@ -172,6 +201,10 @@ const ViewBlog = () => {
     }
   };
 
+  const handleUser = (userId) => {
+    navigate(`/userprofile/${userId}`);
+  };
+
   return (
     <div>
       <section className="section">
@@ -182,22 +215,30 @@ const ViewBlog = () => {
                 <div className="d-flex mb-2">
                   <h1 className="h2 mb-3">{post.title}</h1>
                   <div className="col-md-4 mt-2 text-right">
-                    {auth.user &&  liked ? (
-                      
-                      <FaHeart
-                        size={20}
-                        color="red"
-                        onClick={() => handleLike()}
-                        style={{ cursor: "pointer" }}
-                      />
-                    
+                    {auth.user && liked ? (
+                      <div>
+                        <FaHeart
+                          size={20}
+                          color="red"
+                          onClick={() =>
+                            handleDisLike(
+                              likes.length > 0 ? likes[0].id : null,
+                              post.id,
+                              post.user.id
+                            )
+                          }
+                          style={{ cursor: "pointer" }}
+                        />
+                      </div>
                     ) : (
-                      <FaRegHeart
-                        value={like}
-                        size={20}
-                        onClick={() => handleLike()}
-                        style={{ cursor: "pointer" }}
-                      />
+                      <div>
+                        <FaRegHeart
+                          value={like}
+                          size={20}
+                          onClick={() => handleLike()}
+                          style={{ cursor: "pointer" }}
+                        />
+                      </div>
                     )}
                   </div>
                 </div>
@@ -205,20 +246,33 @@ const ViewBlog = () => {
                 <ul className="list-inline post-meta mb-3">
                   <li className="list-inline-item">
                     <i className="ti-user mr-2"></i>
-                    <a href="author.html">{post.user.name}</a>
+                    <a
+                      style={{ textDecoration: "none" }}
+                      onClick={() => handleUser(post.user.id)}
+                    >
+                      {post.user.name}
+                    </a>
                   </li>
                   <li className="list-inline-item">
                     Date : {printDate(post.date)}
                   </li>
                   <li className="list-inline-item">
                     Categories :{" "}
-                    <a href="#!" className="ml-1">
-                      Photography{" "}
+                    <a
+                      href="#!"
+                      className="ml-1"
+                      style={{ textDecoration: "none" }}
+                    >
+                      {post.category.categoryName}
                     </a>
                   </li>
                   <li className="list-inline-item">
                     Tags :{" "}
-                    <a href="#!" className="ml-1">
+                    <a
+                      href="#!"
+                      className="ml-1"
+                      style={{ textDecoration: "none" }}
+                    >
                       {post.tags}{" "}
                     </a>{" "}
                   </li>
